@@ -2,7 +2,7 @@
 , aws-secret
 , pkgs
 , cache-name
-, master-cache 
+, master-cache
 , cache-dirs
 , s3-bucket
 }:
@@ -16,11 +16,11 @@ drv:
 drv.overrideAttrs (oldAttrs: {
   AWS_ACCESS_KEY_ID = aws-key;
   AWS_SECRET_ACCESS_KEY = aws-secret;
-  
+
   preConfigure = ''
-    echo "-*-*-*-*-"  
+    echo "-*-*-*-*-"
     echo "nix-build-cache enabled"
-    echo "-*-*-*-*-"  
+    echo "-*-*-*-*-"
 
     # Before we do anything, capture the MD5 sums of all source files.
     # This is compared against the source files used to produce a cache tarball
@@ -28,7 +28,7 @@ drv.overrideAttrs (oldAttrs: {
     mkdir -p "$out"
     echo "nix-build-cache: Noting current file hashes"
     find . -type f -print0 | xargs -0 md5sum | sort > $out/MD5SUMS
-    
+
     CACHE_TAR=$( ${pkgs.coreutils}/bin/mktemp )
     echo "nix-build-cache: Downloading latest build cache from S3"
     (
@@ -47,7 +47,7 @@ drv.overrideAttrs (oldAttrs: {
       touch "$filename" || true
     done
 
-    mv $out/MD5SUMS .cache-meta/MD5SUMS 
+    mv $out/MD5SUMS .cache-meta/MD5SUMS
 
     # Touch all build cache files to be 2 hours in the past.
     # Note that source code will be last modified in 1970 *by default*
@@ -56,7 +56,7 @@ drv.overrideAttrs (oldAttrs: {
         touch -d "$(date -R -r "$filename") - 2 hours" "$filename"
     done
 
-    ${oldAttrs.preConfigure} 
+    ${if oldAttrs ? preConfigure then oldAttrs.preConfigure else ""} 
   '';
   preInstall = ''
     CACHE_TAR=$(mktemp)
@@ -70,6 +70,6 @@ drv.overrideAttrs (oldAttrs: {
       rm "$CACHE_TAR"
     ) || echo "Failed to tar/upload cache"
 
-    ${oldAttrs.preInstall}
+    ${if oldAttrs ? preInstall then oldAttrs.preInstall else ""} 
   '';
 })
