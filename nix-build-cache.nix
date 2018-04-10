@@ -22,12 +22,12 @@ drv.overrideAttrs (oldAttrs: {
     echo "nix-build-cache enabled"
     echo "-*-*-*-*-"
 
-    # Before we do anything, capture the MD5 sums of all source files.
+    # Before we do anything, capture the SHA3 sums of all source files.
     # This is compared against the source files used to produce a cache tarball
     # so we know which files have changed since the cache was made.
     mkdir -p "$out"
     echo "nix-build-cache: Noting current file hashes"
-    find . -type f -print0 | xargs -0 md5sum | sort > $out/MD5SUMS
+    find . -type f -print0 | xargs -0 $ {pkgs.busybox}/bin/sha3sum | sort > $out/SHA3SUMS 
 
     CACHE_TAR=$( ${pkgs.coreutils}/bin/mktemp )
     echo "nix-build-cache: Downloading latest build cache from S3"
@@ -39,15 +39,15 @@ drv.overrideAttrs (oldAttrs: {
     ) || echo "nix-build-cache: Cache not found, continuing"
 
     mkdir -p .cache-meta
-    touch .cache-meta/MD5SUMS
+    touch .cache-meta/SHA3SUMS
 
-    # Touch any files whose MD5SUM has changed since the last build
-    join $out/MD5SUMS .cache-meta/MD5SUMS -v 1 | cut -d' ' -f 2 | while read filename; do
+    # Touch any files whose SHA3SUM has changed since the last build
+    join $out/SHA3SUMS .cache-meta/SHA3SUMS -v 1 | cut -d' ' -f 2 | while read filename; do
       echo "nix-build-cache: $filename" has changed
       touch "$filename" || true
     done
 
-    mv $out/MD5SUMS .cache-meta/MD5SUMS
+    mv $out/SHA3SUMS .cache-meta/SHA3SUMS
 
     # Touch all build cache files to be 2 hours in the past.
     # Note that source code will be last modified in 1970 *by default*
