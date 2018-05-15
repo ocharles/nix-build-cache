@@ -56,20 +56,21 @@ drv.overrideAttrs (oldAttrs: {
         touch -d "$(date -R -r "$filename") - 2 hours" "$filename"
     done
 
+    function uploadCache() {
+      CACHE_TAR=$(mktemp)
+      (
+        echo "Taring build cache"
+        tar cfJ "$CACHE_TAR" --mode='a+w' --exclude='*.so' --exclude='*.a' .cache-meta ${toString cache-dirs}
+
+        echo "Uploading latest build cache to S3"
+        ${pkgs.awscli}/bin/aws s3 cp "$CACHE_TAR" "${s3-uri cache-name}"
+
+        rm "$CACHE_TAR"
+      ) || echo "Failed to tar/upload cache"
+    }
+
+    trap 'uploadCache' EXIT
+
     ${if oldAttrs ? preConfigure then oldAttrs.preConfigure else ""} 
-  '';
-  preInstall = ''
-    CACHE_TAR=$(mktemp)
-    (
-      echo "Taring build cache"
-      tar cfJ "$CACHE_TAR" --mode='a+w' --exclude='*.so' --exclude='*.a' .cache-meta ${toString cache-dirs}
-
-      echo "Uploading latest build cache to S3"
-      ${pkgs.awscli}/bin/aws s3 cp "$CACHE_TAR" "${s3-uri cache-name}"
-
-      rm "$CACHE_TAR"
-    ) || echo "Failed to tar/upload cache"
-
-    ${if oldAttrs ? preInstall then oldAttrs.preInstall else ""} 
   '';
 })
